@@ -1,4 +1,4 @@
-from .definitions import SMFFormat, SMFEvent
+from .definitions import *
 from .header import SMFHeader
 from .track import SMFTrack
 import time

@@ -1,5 +1,6 @@
-from .definitions import (SMFEvent, MidiEvent)
+from .definitions import *
 from .header import SMFHeader
+from collections import Dict
 
 
 struct TrackParsingFSM:
@@ -19,6 +20,7 @@ struct TrackParsingProps:
     var abs_tick: UInt32
     var abs_time: Float64
     var tempo: UInt32
+    var note_tracker: Dict[Int, Int]
 
 
 @value
@@ -32,7 +34,7 @@ struct SMFTrack(Representable):
         self.byte_size = 0
         self.events = List[SMFEvent]()
         self.midi_events = List[MidiEvent]()
-        self.parsingProps = TrackParsingProps(TrackParsingFSM.PARSE_DELTA_TIME, 0, 0, 0, 0, 0.0, 500_000)
+        self.parsingProps = TrackParsingProps(TrackParsingFSM.PARSE_DELTA_TIME, 0, 0, 0, 0, 0.0, 500_000, Dict[Int, Int]())
 
     fn __repr__(self) -> String:
         try:
@@ -125,14 +127,43 @@ struct SMFTrack(Representable):
         self.parsingProps.fsm = TrackParsingFSM.PARSE_DELTA_TIME
 
     @always_inline
+    fn _build_midi_events(mut self):
+        var current_event = self.events[-1]
+        var status = current_event.event_type & 0xf0
+        if status == 0x90:
+            self.midi_events.append(MidiNoteOn(current_event))
+            self.parsingProps.note_tracker[int(current_event.data[0])] = len(self.midi_events) - 1
+        elif status == 0x80 and int(current_event.data[0]) in self.parsingProps.note_tracker:
+            note_off_event = MidiNoteOff(current_event)
+            try:
+                var on_event_idx = self.parsingProps.note_tracker.pop(int(current_event.data[0]))
+                self.midi_events[on_event_idx][MidiNoteOn].abs_offset_time = note_off_event.abs_time
+                note_off_event.abs_onset_time = self.midi_events[on_event_idx][MidiNoteOn].abs_time
+                self.midi_events.append(note_off_event)
+            except:
+                pass
+        elif status == 0xa0:
+            self.midi_events.append(MidiPolyphonicAftertouch(current_event))
+        elif status == 0xb0:
+            self.midi_events.append(MidiControlChange(current_event))
+        elif status == 0xe0:
+            self.midi_events.append(MidiPitchBend(current_event))
+        elif status == 0xc0:
+            self.midi_events.append(MidiProgramChange(current_event))
+        elif status == 0xd0:
+            self.midi_events.append(MidiChannelAftertouch(current_event))
+
+    @always_inline
     fn _parse_std_midi_event(mut self, track_data_bytes: List[UInt8]):
         status = self.events[-1].event_type
         if (UInt8(0x80) <= status <= UInt8(0xbf)) or (UInt8(0xe0) <= status <= UInt8(0xef)):
             self.events[-1].data.extend(track_data_bytes[self.parsingProps.iter_idx : self.parsingProps.iter_idx + 2])
             self.parsingProps.iter_idx += 2
+            self._build_midi_events()
         elif UInt8(0xc0) <= status <= UInt8(0xdf):
             self.events[-1].data.extend(track_data_bytes[self.parsingProps.iter_idx : self.parsingProps.iter_idx + 1])
             self.parsingProps.iter_idx += 1
+            self._build_midi_events()
         self.parsingProps.fsm = TrackParsingFSM.PARSE_DELTA_TIME
 
     fn _parse_track_events(mut self, track_data_bytes: List[UInt8], header: SMFHeader):

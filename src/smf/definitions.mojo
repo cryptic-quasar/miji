@@ -55,6 +55,13 @@ struct MidiNoteOn:
         self.key = smf_event.data[0]
         self.velocity = smf_event.data[1]
 
+    fn __repr__(self) -> String:
+        try:
+            formatted_str = 'Note On:\n\t- Relative Time (s): {0}\n\t- Absolute Time (s): {1}\n\t- Offset Time (s): {2}\n\t- Channel: {3}\n\t- Key: {4}\n\t- Velocity: {5}'
+            return formatted_str.format(self.rel_time, self.abs_time, self.abs_offset_time, self.channel, self.key, self.velocity)
+        except:
+            return ''
+
 
 @value
 struct MidiNoteOff:
@@ -73,6 +80,13 @@ struct MidiNoteOff:
         self.key = smf_event.data[0]
         self.velocity = smf_event.data[1]
 
+    fn __repr__(self) -> String:
+        try:
+            formatted_str = 'Note Off:\n\t- Relative Time (s): {0}\n\t- Absolute Time (s): {1}\n\t- Onset Time (s): {2}\n\t- Channel: {3}\n\t- Key: {4}\n\t- Velocity: {5}'
+            return formatted_str.format(self.rel_time, self.abs_time, self.abs_onset_time, self.channel, self.key, self.velocity)
+        except:
+            return ''
+
 
 @value
 struct MidiControlChange:
@@ -89,5 +103,102 @@ struct MidiControlChange:
         self.control_number = smf_event.data[0]
         self.value = smf_event.data[1]
 
+    fn __repr__(self) -> String:
+        try:
+            formatted_str = 'Control Change:\n\t- Relative Time (s): {0}\n\t- Absolute Time (s): {1}\n\t- Channel: {2}\n\t- CC: {3}\n\t- Value: {4}'
+            return formatted_str.format(self.rel_time, self.abs_time, self.channel, self.control_number, self.value)
+        except:
+            return ''
 
-alias MidiEvent = Variant[MidiNoteOn, MidiNoteOff, MidiControlChange]
+
+@value
+struct MidiPolyphonicAftertouch:
+    var rel_time: Float64
+    var abs_time: Float64
+    var channel: UInt8
+    var key: UInt8
+    var pressure: UInt8
+
+    fn __init__(out self, smf_event: SMFEvent):
+        self.rel_time = smf_event.rel_time
+        self.abs_time = smf_event.abs_time
+        self.channel = smf_event.event_type & 0x0f
+        self.key = smf_event.data[0]
+        self.pressure = smf_event.data[1]
+
+    fn __repr__(self) -> String:
+        try:
+            formatted_str = 'Polyphonic Aftertouch:\n\t- Relative Time (s): {0}\n\t- Absolute Time (s): {1}\n\t- Channel: {2}\n\t- Key: {3}\n\t- Pressure: {4}'
+            return formatted_str.format(self.rel_time, self.abs_time, self.channel, self.key, self.pressure)
+        except:
+            return ''
+
+
+@value
+struct MidiPitchBend:
+    var rel_time: Float64
+    var abs_time: Float64
+    var channel: UInt8
+    var lsb: UInt8
+    var msb: UInt8
+
+    fn __init__(out self, smf_event: SMFEvent):
+        self.rel_time = smf_event.rel_time
+        self.abs_time = smf_event.abs_time
+        self.channel = smf_event.event_type & 0x0f
+        self.lsb = smf_event.data[0]
+        self.msb = smf_event.data[1]
+
+    fn __repr__(self) -> String:
+        try:
+            formatted_str = 'Pitch Bend Change:\n\t- Relative Time (s): {0}\n\t- Absolute Time (s): {1}\n\t- Channel: {2}\n\t- LSB: {3}\n\t- MSB: {4}'
+            return formatted_str.format(self.rel_time, self.abs_time, self.channel, self.lsb, self.msb)
+        except:
+            return ''
+
+
+@value
+struct MidiProgramChange:
+    var rel_time: Float64
+    var abs_time: Float64
+    var channel: UInt8
+    var program: UInt8
+
+    fn __init__(out self, smf_event: SMFEvent):
+        self.rel_time = smf_event.rel_time
+        self.abs_time = smf_event.abs_time
+        self.channel = smf_event.event_type & 0x0f
+        self.program = smf_event.data[0]
+
+    fn __repr__(self) -> String:
+        try:
+            formatted_str = 'Program Change:\n\t- Relative Time (s): {0}\n\t- Absolute Time (s): {1}\n\t- Channel: {2}\n\t- Program: {3}'
+            return formatted_str.format(self.rel_time, self.abs_time, self.channel, self.program)
+        except:
+            return ''
+
+
+@value
+struct MidiChannelAftertouch:
+    var rel_time: Float64
+    var abs_time: Float64
+    var channel: UInt8
+    var pressure: UInt8
+
+    fn __init__(out self, smf_event: SMFEvent):
+        self.rel_time = smf_event.rel_time
+        self.abs_time = smf_event.abs_time
+        self.channel = smf_event.event_type & 0x0f
+        self.pressure = smf_event.data[0]
+
+    fn __repr__(self) -> String:
+        try:
+            formatted_str = 'Channel Aftertouch:\n\t- Relative Time (s): {0}\n\t- Absolute Time (s): {1}\n\t- Channel: {2}\n\t- Pressure: {3}'
+            return formatted_str.format(self.rel_time, self.abs_time, self.channel, self.pressure)
+        except:
+            return ''
+
+alias MidiEvent = Variant[
+    MidiNoteOn, MidiNoteOff, MidiControlChange, MidiPolyphonicAftertouch,
+    MidiPitchBend, MidiProgramChange, MidiChannelAftertouch
+]
